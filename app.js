@@ -11,7 +11,7 @@ var https = require("https");
 setInterval(function() {
     https.get(process.env.DOMAIN);
     console.log("keepwake");
-}, 300000); // every 5 minutes (300000)
+}, 60000); // every 1 minutes (60000)
 //This is for the wake process, mongthly quoto limited
 
 var express = require('express');

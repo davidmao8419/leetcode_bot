@@ -28,7 +28,7 @@ const startDailyProgressCheck = function () {
 const startDailyProgressCheckReport = function(){
     console.log('startDailyProgressCheckReport');
     var job = new CronJob({
-        cronTime: '00 07 00 * * *',
+        cronTime: '00 00 07 * * *',
         onTick: function() {
             console.log('startDailyProgressCheckReport tick!');
             dailyProgressCheck(dailyProgressCheckReport_users);

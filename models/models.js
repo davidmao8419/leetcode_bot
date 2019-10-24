@@ -50,10 +50,36 @@ var leetcodeQuestionsSchema = new Schema({
     }
 });
 
+var weeklyMultiPlanSchema = new Schema({
+    slackID: {
+        type: String,
+        required: true,
+        index: true
+    },
+    week: {
+        type: String,
+        required: true,
+        index: true
+    },
+    plans: {
+        type: Map,
+        of: String
+    },
+    done: {
+        type: Boolean,
+        required: true
+    },
+    reaction: {
+        type: String
+    }
+});
+
 var LeetcodeQuestions = mongoose.model('LeetcodeQuestions', leetcodeQuestionsSchema);
+var WeeklyMultiPlan = mongoose.model('WeeklyMultiPlan', weeklyMultiPlanSchema);
 var User = mongoose.model('User', userSchema);
 
 module.exports = {
     LeetcodeQuestions: LeetcodeQuestions,
     User: User,
+    WeeklyMultiPlan: WeeklyMultiPlan
 };

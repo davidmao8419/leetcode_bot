@@ -121,7 +121,12 @@ bot.on('message', message => {
                                 dailyProgressCheck(dailyProgressCheckReport_users, slackID);
                             } else if (message.text.includes("dailyProgress")) {
                                 dailyProgressCheck(dailyProgressCheck_users, slackID);
-                            } else {
+                            } else if (message.text.includes("newplan")) {
+                                newPlan(slackID);
+                            } else if (message.text.includes("weeklyPlanner")) {
+                                weeklyPlanner(slackID);
+                            }
+                            else {
                                 bot.postMessage(message.user, helpString, { as_user: true });
                             }
 
@@ -165,6 +170,50 @@ function getMonday(d) {
     return new Date(d.setDate(diff));
 }
 
+function newPlan(slackID, message){
+    if(message == undefined) {
+        message = "Click here to make a plan for this week!!!"
+    }
+    var requestData = {
+        as_user: true,
+        "text": `${message}`,
+        "attachments": [
+            {
+                "text": "",
+                "fallback": "You are unable to propose new plan",
+                "callback_id": "newplan",
+                "color": "#3AA3E3",
+                "attachment_type": "default",
+                "actions": [
+                    {
+                        "name": "new_plan_button",
+                        "text": "Plan",
+                        "type": "button",
+                        "value": "yes_plan"
+                    },
+                ]
+            }
+        ],
+    };
+    bot.postMessage(slackID,"",requestData);
+}
+
+function weeklyPlanner(trigger=null){
+    console.log("enter weeklyPlanner");
+    User.find({}, function(err, users) {
+        if(err){
+            console.log(err);
+        }else{
+            users.forEach(function(user) {
+                if(!trigger || trigger==user.slackID){
+                    console.log("weekly plan for ", user);
+                    //weeklyReport(user.slackID, user.rescuetime_key);
+                    setTimeout(function(){newPlan(user.slackID);}, 800);
+                }
+            });
+        }
+    });
+}
 
 module.exports = {
     bot: bot,

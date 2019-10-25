@@ -229,8 +229,11 @@ function daily_reminder(trigger=null) {
                 users.forEach(function(user) {
                     if(!trigger || trigger==user.slackID){
                         console.log("########daily reminder for ", user);
-                        //dailyReport(user.slackID, user.week, user.plans);
-                        //daily_submissions_check(user.slackID, user.cookie);
+                        User.findOne({slackID:user.slackID}, function(err, user) {
+                            if(!err) {
+                                daily_submissions_check(user.slackID, user.cookie);
+                            } 
+                        });
                     }
                 });
             } else {
@@ -265,6 +268,7 @@ function daily_submissions_check(slackID, cookie) {
           var bodyJson = JSON.parse(body);
           
           var submissions = bodyJson.submissions_dump;
+          console.log(submissions);
           var yesterday = new Date(new Date().setDate(new Date().getDate()-1));
           var total_submitted_num = 0;
           var total_accepted_num = 0;

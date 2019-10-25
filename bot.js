@@ -1,8 +1,9 @@
 var SlackBot = require('slackbots');
 var mongoose = require('mongoose');
+const request = require('request');
 var CronJob = require('cron').CronJob;
 //mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true }); // only when test bot.js
-var { User } = require('./models/models');
+var { User, WeeklyMultiPlan} = require('./models/models');
 var _ = require('underscore')
 const envKey = process.env.NUDGE_BOT_TOKEN;
 mongoose.Promise = global.Promise;
@@ -125,6 +126,8 @@ bot.on('message', message => {
                                 newPlan(slackID);
                             } else if (message.text.includes("weeklyPlanner")) {
                                 weeklyPlanner(slackID);
+                            } else if (message.text.includes("dailyreminder")) {
+                                daily_reminder();
                             }
                             else {
                                 bot.postMessage(message.user, helpString, { as_user: true });
@@ -211,6 +214,78 @@ function weeklyPlanner(trigger=null){
                     setTimeout(function(){newPlan(user.slackID);}, 800);
                 }
             });
+        }
+    });
+}
+
+function daily_reminder(trigger=null) {
+    var week = getMonday(new Date()).toDateString();
+    WeeklyMultiPlan.find({week:week, done:false}).exec(function(err, users){
+        if(err){
+            console.log(err);
+        }else{
+            //console.log("$$$$$get users: ", users); 
+            if(users && users.length > 0){
+                users.forEach(function(user) {
+                    if(!trigger || trigger==user.slackID){
+                        console.log("########daily reminder for ", user);
+                        //dailyReport(user.slackID, user.week, user.plans);
+                        daily_submissions_check(user.slackID, user.cookie);
+                    }
+                });
+            } else {
+                console.log("########## no plan this week");
+                if(trigger) {
+                    bot.postMessage(trigger, "You don't have any plan yet.", {as_user:true});
+                    newPlan(trigger);
+                }
+            }
+        }
+    });
+}
+
+function daily_submissions_check(slackID, cookie) {
+    var url = 'https://leetcode.com/api/submissions/';
+    //var url = 'https://leetcode.com/api/progress/';
+    //var url = 'https://leetcode.com/api/recent/';
+    var cookie = process.env.COOKIE;
+    var requestJson = {
+        url: url,
+        method: 'GET',
+        headers: {
+            cookie: cookie,
+            'Cache-Control': 'no-cache'
+        },
+        //qs:{offset: '0', limit:'30'}
+    }
+
+    request(requestJson, function (error, response, body) {
+        if(error) {
+            console.log("get code submission error");
+        } else {
+          var bodyJson = JSON.parse(body);
+          
+          var submissions = bodyJson.submissions_dump;
+          var yesterday = new Date(new Date().setDate(new Date().getDate()-1));
+          var total_submitted_num = 0;
+          var total_accepted_num = 0;
+          for(var i=0; i<submissions.length; i++) {
+            submission = submissions[i];  
+            var date = new Date(submission.timestamp*1000);
+            if(date >= yesterday) {
+                total_submitted_num++;
+                if(submission.status_display=='Accepted') {
+                    total_accepted_num++;
+                }
+            }
+          }
+          if(total_submitted_num > 0 && total_accepted_num==0) {
+              bot.postMessage(slackID, `You submitted ${total_submitted_num} problems yesterday but no accpeted ones. Keep going!!`, { as_user: true });
+          } else if(total_submitted_num > 0 && total_accepted_num > 0) {
+              bot.postMessage(slackID, `You submitted ${total_submitted_num} problems yesterday and ${total_accepted_num} got accepted!! Good work and keep going!`, { as_user: true });
+          } else {
+              bot.postMessage(slackID, "You made no progress yesterday!! Take action now!", { as_user: true });
+          }
         }
     });
 }

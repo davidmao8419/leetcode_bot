@@ -230,7 +230,7 @@ function daily_reminder(trigger=null) {
                     if(!trigger || trigger==user.slackID){
                         console.log("########daily reminder for ", user);
                         //dailyReport(user.slackID, user.week, user.plans);
-                        daily_submissions_check(user.slackID, user.cookie);
+                        //daily_submissions_check(user.slackID, user.cookie);
                     }
                 });
             } else {

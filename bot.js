@@ -248,7 +248,6 @@ function daily_submissions_check(slackID, cookie) {
     var url = 'https://leetcode.com/api/submissions/';
     //var url = 'https://leetcode.com/api/progress/';
     //var url = 'https://leetcode.com/api/recent/';
-    var cookie = process.env.COOKIE;
     var requestJson = {
         url: url,
         method: 'GET',

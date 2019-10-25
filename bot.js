@@ -268,7 +268,7 @@ function daily_submissions_check(slackID, cookie) {
           var bodyJson = JSON.parse(body);
           
           var submissions = bodyJson.submissions_dump;
-          console.log(submissions);
+          //console.log(submissions);
           var yesterday = new Date(new Date().setDate(new Date().getDate()-1));
           var total_submitted_num = 0;
           var total_accepted_num = 0;

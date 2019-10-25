@@ -220,18 +220,17 @@ function weeklyPlanner(trigger=null){
 
 function daily_reminder(trigger=null) {
     var week = getMonday(new Date()).toDateString();
-    WeeklyMultiPlan.find({week:week, done:false}).exec(function(err, users){
+    WeeklyMultiPlan.find({week:week, done:false}).exec(function(err, plans){
         if(err){
             console.log(err);
         }else{
             //console.log("$$$$$get users: ", users); 
-            if(users && users.length > 0){
-                users.forEach(function(user) {
-                    if(!trigger || trigger==user.slackID){
-                        console.log("########daily reminder for ", user);
-                        User.findOne({slackID:user.slackID}, function(err, user) {
+            if(plans && plans.length > 0){
+                plans.forEach(function(plan) {
+                    if(!trigger || trigger==plan.slackID){
+                        User.findOne({slackID:plan.slackID}, function(err, user) {
                             if(!err) {
-                                daily_submissions_check(user.slackID, user.cookie);
+                                daily_submissions_check(user.slackID, user.cookie, plan);
                             } 
                         });
                     }
@@ -247,7 +246,7 @@ function daily_reminder(trigger=null) {
     });
 }
 
-function daily_submissions_check(slackID, cookie) {
+function daily_submissions_check(slackID, cookie, plan_db) {
     var url = 'https://leetcode.com/api/submissions/';
     //var url = 'https://leetcode.com/api/progress/';
     //var url = 'https://leetcode.com/api/recent/';
@@ -285,7 +284,26 @@ function daily_submissions_check(slackID, cookie) {
           if(total_submitted_num > 0 && total_accepted_num==0) {
               bot.postMessage(slackID, `You submitted ${total_submitted_num} problems yesterday but no accpeted ones. Keep going!!`, { as_user: true });
           } else if(total_submitted_num > 0 && total_accepted_num > 0) {
-              bot.postMessage(slackID, `You submitted ${total_submitted_num} problems yesterday and ${total_accepted_num} got accepted!! Good work and keep going!`, { as_user: true });
+            plan = plan_db.plans;
+            solved_num = parseInt(plan.get('problems_solved')) + total_accepted_num;
+            done = false;
+            if(solved_num >= parseInt(plan.get('problems_goal'))) {
+                plan_db.done = true;
+                done = true;
+            }
+            
+            plan.set('problems_solved', solved_num);
+            plan_db.plans = plan;
+            plan_db.save()
+                .then(() => {
+                    bot.postMessage(slackID, `You submitted ${total_submitted_num} problems yesterday and ${total_accepted_num} got accepted!! Good work and keep going!`, { as_user: true });
+                    if(done) {
+                        setTimeout(function(){newPlan(slackID, "Good job! Set a new goal for this week!");}, 800);
+                    }
+                })
+                .catch((err) => {
+                    console.log("weekly plan update error occurs: ", err);
+                });
           } else {
               bot.postMessage(slackID, "You made no progress yesterday!! Take action now!", { as_user: true });
           }

@@ -1,9 +1,10 @@
 var SlackBot = require('slackbots');
 var mongoose = require('mongoose');
 const request = require('request');
+var moment = require('moment');
 var CronJob = require('cron').CronJob;
 //mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true }); // only when test bot.js
-var { User, WeeklyMultiPlan} = require('./models/models');
+var { User, WeeklyMultiPlan, LeaderBoard } = require('./models/models');
 var _ = require('underscore')
 const envKey = process.env.NUDGE_BOT_TOKEN;
 mongoose.Promise = global.Promise;
@@ -14,13 +15,25 @@ var bot = new SlackBot({
     name: 'nudgebot'
 });
 
-const startDailyProgressCheck = function () {
+// const startDailyProgressCheck = function () {
+//     console.log('startDailyProgressCheck');
+//     var job = new CronJob({
+//         cronTime: '00 00 00 * * *',
+//         onTick: function () {
+//             console.log('startDailyProgressCheck tick!');
+//             dailyProgressCheck(dailyProgressCheck_users);
+//         }
+//     });
+//     job.start();
+// }
+
+const startDailyLeaderBoardCheck = function () {
     console.log('startDailyProgressCheck');
     var job = new CronJob({
-        cronTime: '00 00 00 * * *',
+        cronTime: '00 00 07 * * *',
         onTick: function () {
-            console.log('startDailyProgressCheck tick!');
-            dailyProgressCheck(dailyProgressCheck_users);
+            console.log('startDailyLeaderBoardCheck tick!');
+            dailyLeaderBoardCheck();
         }
     });
     job.start();
@@ -29,10 +42,11 @@ const startDailyProgressCheck = function () {
 const startDailyProgressCheckReport = function(){
     console.log('startDailyProgressCheckReport');
     var job = new CronJob({
-        cronTime: '00 00 07 * * *',
+        cronTime: '00 00 00 * * *',
         onTick: function() {
             console.log('startDailyProgressCheckReport tick!');
-            dailyProgressCheck(dailyProgressCheckReport_users);
+            //dailyProgressCheck(dailyProgressCheckReport_users);
+            daily_reminder();
         }
     });
     job.start();
@@ -47,6 +61,25 @@ function dailyProgressCheck(callback, trigger = null) {
             users.map(user=>{
                 if (!trigger || trigger == user.slackID) {
                     callback(user);
+                }
+            });
+        }
+    });
+}
+
+function dailyLeaderBoardCheck(trigger = null) {
+    console.log('dailyLeaderBoardCheck trigger ', trigger);
+    var date = moment().format().split('T')[0];
+    LeaderBoard.find({date: date}, function (err, leaderBoards) {
+        if (err) {
+            console.log(err);
+        } else {
+            leaderBoards = leaderBoards.sort((a, b) => b.number - a.number);
+            var topLeaders = leaderBoards.map(leaderBoard=> leaderBoard.slackID+"\t"+leaderBoard.number);
+            var message = "Top 5:\n"+topLeaders.slice(0, 5).join("\n");
+            leaderBoards.map(leaderBoard=>{
+                if(trigger==null||leaderBoard.slackID==trigger){
+                    bot.postMessage(leaderBoard.slackID, message, { as_user: true });
                 }
             });
         }
@@ -93,8 +126,9 @@ function dailyProgressCheckReport_users(user) {
 
 bot.on('start', function () {
     console.log('bot started!!');
-    startDailyProgressCheck();
+    //startDailyProgressCheck();
     startDailyProgressCheckReport();
+    startDailyLeaderBoardCheck();
 });
 
 bot.on('message', message => {
@@ -127,7 +161,9 @@ bot.on('message', message => {
                             } else if (message.text.includes("weeklyPlanner")) {
                                 weeklyPlanner(slackID);
                             } else if (message.text.includes("dailyreminder")) {
-                                daily_reminder();
+                                daily_reminder(slackID);
+                            }else if(message.text.includes("dailyLeaderBoard")){
+                                dailyLeaderBoardCheck(slackID);
                             }
                             else {
                                 bot.postMessage(message.user, helpString, { as_user: true });
@@ -248,6 +284,7 @@ function daily_reminder(trigger=null) {
 
 function daily_submissions_check(slackID, cookie, plan_db) {
     var url = 'https://leetcode.com/api/submissions/';
+    var leader_board_date = moment().format().split('T')[0];
     //var url = 'https://leetcode.com/api/progress/';
     //var url = 'https://leetcode.com/api/recent/';
     var requestJson = {
@@ -264,6 +301,7 @@ function daily_submissions_check(slackID, cookie, plan_db) {
         if(error) {
             console.log("get code submission error");
         } else {
+            console.log(body);
           var bodyJson = JSON.parse(body);
           
           var submissions = bodyJson.submissions_dump;
@@ -281,6 +319,20 @@ function daily_submissions_check(slackID, cookie, plan_db) {
                 }
             }
           }
+          leaderBoard = new LeaderBoard({
+            slackID: slackID,
+            date: leader_board_date,
+            number: total_accepted_num
+          });
+          leaderBoard.save()
+          .then( () => {
+              console.log('leaderBoard save successfull for ', slackID, leader_board_date);
+            })
+          .catch((err) => {
+              console.log('error in new LeaderBoard for', slackID, leader_board_date);
+              console.log(err);
+              console.log(err.errmsg);
+          });
           if(total_submitted_num > 0 && total_accepted_num==0) {
               bot.postMessage(slackID, `You submitted ${total_submitted_num} problems yesterday but no accpeted ones. Keep going!!`, { as_user: true });
           } else if(total_submitted_num > 0 && total_accepted_num > 0) {

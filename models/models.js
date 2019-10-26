@@ -50,6 +50,25 @@ var leetcodeQuestionsSchema = new Schema({
     }
 });
 
+var leaderBoardSchema = new Schema({
+    slackID: {
+        type: String,
+        required: true,
+        index: true
+    },
+    date: {
+        type: String,
+        required: true,
+        index: true
+    },
+    number: {
+        type: Number,
+        required: true
+    }
+});
+
+leaderBoardSchema.index({ slackID: 1, date: 1 }, { unique: true });
+
 var weeklyMultiPlanSchema = new Schema({
     slackID: {
         type: String,
@@ -76,10 +95,12 @@ var weeklyMultiPlanSchema = new Schema({
 
 var LeetcodeQuestions = mongoose.model('LeetcodeQuestions', leetcodeQuestionsSchema);
 var WeeklyMultiPlan = mongoose.model('WeeklyMultiPlan', weeklyMultiPlanSchema);
+var LeaderBoard = mongoose.model('LeaderBoard', leaderBoardSchema);
 var User = mongoose.model('User', userSchema);
 
 module.exports = {
     LeetcodeQuestions: LeetcodeQuestions,
     User: User,
-    WeeklyMultiPlan: WeeklyMultiPlan
+    WeeklyMultiPlan: WeeklyMultiPlan,
+    LeaderBoard: LeaderBoard
 };

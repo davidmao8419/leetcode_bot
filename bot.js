@@ -27,10 +27,21 @@ var bot = new SlackBot({
 //     job.start();
 // }
 
+const startWeeklyPlanner = function(){
+    var job = new CronJob({
+        cronTime: '00 00 07 * * 1',
+        onTick: function() {
+            console.log('startWeeklyPlanner tick!');
+            weeklyPlanner();
+        }
+    });
+    job.start();
+}
+
 const startDailyLeaderBoardCheck = function () {
     console.log('startDailyProgressCheck');
     var job = new CronJob({
-        cronTime: '00 00 07 * * *',
+        cronTime: '00 00 07 * * 0,2-6',
         onTick: function () {
             console.log('startDailyLeaderBoardCheck tick!');
             dailyLeaderBoardCheck();
@@ -77,9 +88,15 @@ function dailyLeaderBoardCheck(trigger = null) {
             leaderBoards = leaderBoards.sort((a, b) => b.number - a.number);
             var topLeaders = leaderBoards.map(leaderBoard=> leaderBoard.slackID+"\t"+leaderBoard.number);
             var message = "Top 5:\n"+topLeaders.slice(0, 5).join("\n");
-            leaderBoards.map(leaderBoard=>{
-                if(trigger==null||leaderBoard.slackID==trigger){
-                    bot.postMessage(leaderBoard.slackID, message, { as_user: true });
+            User.find({}, function(err, users) {
+                if(err){
+                    console.log(err);
+                }else{
+                    users.forEach(function(user) {
+                        if(!trigger || trigger==user.slackID){
+                            bot.postMessage(user.slackID, message, { as_user: true });
+                        }
+                    });
                 }
             });
         }
@@ -127,6 +144,7 @@ function dailyProgressCheckReport_users(user) {
 bot.on('start', function () {
     console.log('bot started!!');
     //startDailyProgressCheck();
+    startWeeklyPlanner();
     startDailyProgressCheckReport();
     startDailyLeaderBoardCheck();
 });

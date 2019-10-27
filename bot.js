@@ -160,8 +160,12 @@ bot.on('message', message => {
                                 newPlan(slackID);
                             } else if (message.text.includes("weeklyPlanner")) {
                                 weeklyPlanner(slackID);
+                            }else if (message.text.includes("dailyreminder_all")) {
+                                daily_reminder();
                             } else if (message.text.includes("dailyreminder")) {
                                 daily_reminder(slackID);
+                            }else if(message.text.includes("dailyLeaderBoard_all")){
+                                dailyLeaderBoardCheck();
                             }else if(message.text.includes("dailyLeaderBoard")){
                                 dailyLeaderBoardCheck(slackID);
                             }

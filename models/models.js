@@ -69,6 +69,29 @@ var leaderBoardSchema = new Schema({
 
 leaderBoardSchema.index({ slackID: 1, date: 1 }, { unique: true });
 
+var dailySubmissionSchema = new Schema({
+    slackID: {
+        type: String,
+        required: true,
+        index: true
+    },
+    date: {
+        type: Date,
+        required: true,
+        index: true
+    },
+    total_submitted_num: {
+        type: Number,
+        required: true
+    },
+    total_accepted_num: {
+        type: Number,
+        required: true
+    }
+});
+
+dailySubmissionSchema.index({ slackID: 1, date: 1 }, { unique: true });
+
 var weeklyMultiPlanSchema = new Schema({
     slackID: {
         type: String,
@@ -96,11 +119,13 @@ var weeklyMultiPlanSchema = new Schema({
 var LeetcodeQuestions = mongoose.model('LeetcodeQuestions', leetcodeQuestionsSchema);
 var WeeklyMultiPlan = mongoose.model('WeeklyMultiPlan', weeklyMultiPlanSchema);
 var LeaderBoard = mongoose.model('LeaderBoard', leaderBoardSchema);
+var DailySubmission = mongoose.model('DailySubmission', dailySubmissionSchema);
 var User = mongoose.model('User', userSchema);
 
 module.exports = {
     LeetcodeQuestions: LeetcodeQuestions,
     User: User,
     WeeklyMultiPlan: WeeklyMultiPlan,
-    LeaderBoard: LeaderBoard
+    LeaderBoard: LeaderBoard,
+    DailySubmission: DailySubmission
 };

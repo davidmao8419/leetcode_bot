@@ -4,7 +4,7 @@ const request = require('request');
 var moment = require('moment');
 var CronJob = require('cron').CronJob;
 //mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true }); // only when test bot.js
-var { User, WeeklyMultiPlan, LeaderBoard } = require('./models/models');
+var { User, WeeklyMultiPlan, LeaderBoard, DailySubmission } = require('./models/models');
 var _ = require('underscore')
 const envKey = process.env.NUDGE_BOT_TOKEN;
 mongoose.Promise = global.Promise;
@@ -186,6 +186,8 @@ bot.on('message', message => {
                                 dailyLeaderBoardCheck();
                             }else if(message.text.includes("dailyLeaderBoard")){
                                 dailyLeaderBoardCheck(slackID);
+                            }else if(message.text.includes("query ")){
+                                queryUser(slackID, message.text);
                             }
                             else {
                                 bot.postMessage(message.user, helpString, { as_user: true });
@@ -197,6 +199,28 @@ bot.on('message', message => {
             }
     }
 });
+
+function queryUser(slackID, text){
+    var user = text.split(' ')[1];
+    DailySubmission.sort({date: 'desc'}).findOne({ slackID: user }).exec(function (err, dailySubmissions) {
+        if (err) {
+            console.log(err);
+        } else {
+            //console.log(user);
+            if (!user) {
+                bot.postMessage(slackID, "Sorry! Didn't find the user!", { as_user: true });
+            } else {
+                var message = "";
+                dailySubmissions = dailySubmissions.slice(0, 5);
+                for(var i=0;i<dailySubmissions.length;i++)
+                {
+                    message+=user+' submitted '+dailySubmissions[i].total_submitted_num+", and solved "+dailySubmissions[i].total_accepted_num;
+                }
+                bot.postMessage(slackID, message, { as_user: true });
+            }
+        }
+    });
+}
 
 function authenticate(slackID) {
     var requestData = {
@@ -352,6 +376,21 @@ function daily_submissions_check(slackID, cookie, plan_db) {
             })
           .catch((err) => {
               console.log('error in new LeaderBoard for', slackID, leader_board_date);
+              console.log(err);
+              console.log(err.errmsg);
+          });
+          dailySubmission = new DailySubmission({
+            slackID: slackID,
+            date: new Date(leader_board_date),
+            total_submitted_num: total_submitted_num,
+            total_accepted_num: total_accepted_num
+          });
+          dailySubmission.save()
+          .then( () => {
+              console.log('dailySubmission save successfull for ', slackID, leader_board_date);
+            })
+          .catch((err) => {
+              console.log('error in new dailySubmission for', slackID, leader_board_date);
               console.log(err);
               console.log(err.errmsg);
           });

@@ -202,19 +202,19 @@ bot.on('message', message => {
 
 function queryUser(slackID, text){
     var user = text.split(' ')[1];
-    DailySubmission.sort({date: 'desc'}).findOne({ slackID: user }).exec(function (err, dailySubmissions) {
+    DailySubmission.find({ slackID: user }).sort({date: 'desc'}).exec(function (err, dailySubmissions) {
         if (err) {
             console.log(err);
         } else {
             //console.log(user);
-            if (!user) {
+            if (!dailySubmissions) {
                 bot.postMessage(slackID, "Sorry! Didn't find the user!", { as_user: true });
             } else {
                 var message = "";
                 dailySubmissions = dailySubmissions.slice(0, 5);
                 for(var i=0;i<dailySubmissions.length;i++)
                 {
-                    message+=user+' submitted '+dailySubmissions[i].total_submitted_num+", and solved "+dailySubmissions[i].total_accepted_num;
+                    message+=user+' submitted '+dailySubmissions[i].total_submitted_num+", and solved "+dailySubmissions[i].total_accepted_num+" at "+dailySubmissions[i].date.toISOString().slice(0, 10);
                 }
                 bot.postMessage(slackID, message, { as_user: true });
             }
@@ -381,7 +381,7 @@ function daily_submissions_check(slackID, cookie, plan_db) {
           });
           dailySubmission = new DailySubmission({
             slackID: slackID,
-            date: new Date(leader_board_date),
+            date: yesterday,
             total_submitted_num: total_submitted_num,
             total_accepted_num: total_accepted_num
           });

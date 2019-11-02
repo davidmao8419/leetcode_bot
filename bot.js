@@ -212,11 +212,11 @@ function queryUser(slackID, text){
                 bot.postMessage(slackID, "Sorry! Didn't find the user!", { as_user: true });
             } else {
                 console.log("dailySubmissions ", dailySubmissions);
-                var message = "";
+                var message = user+"\n"
                 dailySubmissions = dailySubmissions.slice(0, 5);
                 for(var i=0;i<dailySubmissions.length;i++)
                 {
-                    message+=user+' submitted '+dailySubmissions[i].total_submitted_num+", and solved "+dailySubmissions[i].total_accepted_num+" at "+dailySubmissions[i].date.toISOString().slice(0, 10);
+                    message+='\tsubmitted '+dailySubmissions[i].total_submitted_num+", and solved "+dailySubmissions[i].total_accepted_num+" at "+dailySubmissions[i].date.toISOString().slice(0, 10)+"\n";
                 }
                 bot.postMessage(slackID, message, { as_user: true });
             }

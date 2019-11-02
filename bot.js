@@ -202,14 +202,16 @@ bot.on('message', message => {
 
 function queryUser(slackID, text){
     var user = text.split(' ')[1];
+    console.log("query user ", slackID, text);
     DailySubmission.find({ slackID: user }).sort({date: 'desc'}).exec(function (err, dailySubmissions) {
         if (err) {
             console.log(err);
         } else {
             //console.log(user);
-            if (!dailySubmissions) {
+            if (!dailySubmissions||dailySubmissions.length==0) {
                 bot.postMessage(slackID, "Sorry! Didn't find the user!", { as_user: true });
             } else {
+                console.log("dailySubmissions ", dailySubmissions);
                 var message = "";
                 dailySubmissions = dailySubmissions.slice(0, 5);
                 for(var i=0;i<dailySubmissions.length;i++)

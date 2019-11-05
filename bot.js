@@ -192,6 +192,8 @@ bot.on('message', message => {
                                 dailyLeaderBoardCheck(slackID);
                             }else if(message.text.includes("query ")){
                                 queryUser(slackID, message.text);
+                            }else if(message.text.includes("compareLastWeek")) {
+                                compare_last_week(slackID);
                             }
                             else {
                                 bot.postMessage(message.user, helpString, { as_user: true });
@@ -299,6 +301,7 @@ function weeklyPlanner(trigger=null){
                 if(!trigger || trigger==user.slackID){
                     console.log("weekly plan for ", user);
                     //weeklyReport(user.slackID, user.rescuetime_key);
+                    compare_last_week(user.slackID);
                     setTimeout(function(){newPlan(user.slackID);}, 800);
                 }
             });
@@ -426,6 +429,49 @@ function daily_submissions_check(slackID, cookie, plan_db) {
           } else {
               bot.postMessage(slackID, "You made no progress yesterday!! Take action now!", { as_user: true });
           }
+        }
+    });
+}
+
+function compare_last_week(slackID) {
+    monday = getMonday(new Date());
+
+    var dateOffset = (24*60*60*1000) * 7; //7 days
+    var date = new Date(monday);
+    date.setTime(date.getTime() - dateOffset);
+    var last_monday = date.toDateString()
+
+    WeeklyMultiPlan.find({week:last_monday, slackID:slackID}).exec(function(err, plans){
+        if(err){
+            console.log(err);
+        }else{
+            done_plan_number = 0;
+            not_done_plan_number = 0;
+            solved_num = 0;
+            unsolved_num = 0;
+            
+            if(plans && plans.length > 0){
+                for(var i=0; i<plans.length; i++) {
+                    plan = plans[i];
+                    solved_num = solved_num + parseInt(plan.plans.get('problems_solved'));
+                    if(plan.done) {
+                        done_plan_number++;
+                    } else {
+                        not_done_plan_number++;
+                        unsolved_num = unsolved_num + parseInt(plan.plans.get('problems_goal')) - parseInt(plan.plans.get('problems_solved'))
+                    }
+                }
+                if(done_plan_number > 0 && not_done_plan_number==0) {
+                    bot.postMessage(slackID, `Wow great job you finished all your plans last week. You solved ${solved_num} problems! Plan to solve more problems this week?`, {as_user:true});
+                } else if(done_plan_number > 0 && not_done_plan_number > 0) {
+                    bot.postMessage(slackID, `You solved ${solved_num} problems! But you didn't finish ${unsolved_num} problems. Make plans to continue to finish ${unsolved_num} problems this week?`, {as_user:true});
+                } else {
+                    bot.postMessage(slackID, `You didn't solve any problems last week! Make plans to solve some problems this week?`, {as_user:true});
+                }
+            } else {
+                console.log("########## no plans made last week");
+                bot.postMessage(slackID, "You didn't make any plans last week. Make some this week?", {as_user:true});
+            }
         }
     });
 }

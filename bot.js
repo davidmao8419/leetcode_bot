@@ -9,6 +9,10 @@ var _ = require('underscore')
 const envKey = process.env.NUDGE_BOT_TOKEN;
 mongoose.Promise = global.Promise;
 
+setInterval(function() {
+    bot.postMessage("UPYKRAV25", "Awake", { as_user: true });
+}, 600000); // every 10 minutes (600000)
+
 // create a bot
 var bot = new SlackBot({
     token: envKey,

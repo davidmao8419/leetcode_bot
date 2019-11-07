@@ -3,7 +3,7 @@ var mongoose = require('mongoose');
 const request = require('request');
 var moment = require('moment');
 var CronJob = require('cron').CronJob;
-//mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true }); // only when test bot.js
+mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true }); // only when test bot.js
 var { User, WeeklyMultiPlan, LeaderBoard, DailySubmission } = require('./models/models');
 var _ = require('underscore')
 const envKey = process.env.NUDGE_BOT_TOKEN;

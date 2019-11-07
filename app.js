@@ -1,7 +1,7 @@
 var mongoose = require('mongoose');
 var logger = require('morgan');
 var _ = require('underscore');
-var {bot} = require('./bot');
+var {slackApp} = require('./bot');
 var apikey = require('./routes/apikey');
 
 mongoose.connect(process.env.MONGODB_URI,{ useNewUrlParser: true });
@@ -11,7 +11,7 @@ var https = require("https");
 setInterval(function() {
     https.get(process.env.DOMAIN);
     console.log("keepwake");
-}, 60000); // every 1 minutes (60000)
+}, 300000); // every 5 minutes (300000)
 //This is for the wake process, mongthly quoto limited
 
 var express = require('express');

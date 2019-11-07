@@ -1,4 +1,4 @@
-var SlackBot = require('slackbots');
+//var SlackBot = require('slackbots');
 var mongoose = require('mongoose');
 const request = require('request');
 var moment = require('moment');
@@ -7,17 +7,19 @@ var CronJob = require('cron').CronJob;
 var { User, WeeklyMultiPlan, LeaderBoard, DailySubmission } = require('./models/models');
 var _ = require('underscore')
 const envKey = process.env.NUDGE_BOT_TOKEN;
+const { App } = require('@slack/bolt');
 mongoose.Promise = global.Promise;
 
-setInterval(function() {
-    bot.postMessage("UPYKRAV25", "Awake", { as_user: true });
-}, 600000); // every 10 minutes (600000)
+const slackApp = new App({
+    signingSecret: process.env.SLACK_SIGNING_SECRET,
+    token: envKey,
+});
 
 // create a bot
-var bot = new SlackBot({
-    token: envKey,
-    name: 'nudgebot'
-});
+// var bot = new SlackBot({
+//     token: envKey,
+//     name: 'nudgebot'
+// });
 
 // const startDailyProgressCheck = function () {
 //     console.log('startDailyProgressCheck');
@@ -98,7 +100,8 @@ function dailyLeaderBoardCheck(trigger = null) {
                 }else{
                     users.forEach(function(user) {
                         if(!trigger || trigger==user.slackID){
-                            bot.postMessage(user.slackID, message, { as_user: true });
+                            //bot.postMessage(user.slackID, message, { as_user: true });
+                            slackApp.client.chat.postMessage({token: envKey, channel:user.slackID, text:message, as_user: true });
                         }
                     });
                 }
@@ -142,18 +145,19 @@ function dailyProgressCheck_users(user){
 function dailyProgressCheckReport_users(user) {
     console.log('dailyProgressCheckReport_users');
     console.log(user);
-    bot.postMessage(user.slackID, "Your solved "+ user.problems_solved_yesterday + " problems yesterday! \n"+user.num_total+" in total.", { as_user: true });
+    //bot.postMessage(user.slackID, "Your solved "+ user.problems_solved_yesterday + " problems yesterday! \n"+user.num_total+" in total.", { as_user: true });
+    slackApp.client.chat.postMessage({token: envKey, channel:user.slackID, text:"Your solved "+ user.problems_solved_yesterday + " problems yesterday! \n"+user.num_total+" in total.", as_user: true });
 }
 
-bot.on('start', function () {
-    console.log('bot started!!');
-    //startDailyProgressCheck();
-    startWeeklyPlanner();
-    startDailyProgressCheckReport();
-    startDailyLeaderBoardCheck();
-});
+// bot.on('start', function () {
+//     console.log('bot started!!');
+//     //startDailyProgressCheck();
+//     startWeeklyPlanner();
+//     startDailyProgressCheckReport();
+//     startDailyLeaderBoardCheck();
+// });
 
-bot.on('message', message => {
+slackApp.message(({ message, say }) => {
     var slackID = message.user;
     if (message.type != 'error') {
         console.log('-----------------');
@@ -196,7 +200,8 @@ bot.on('message', message => {
                                 compare_last_week(slackID);
                             }
                             else {
-                                bot.postMessage(message.user, helpString, { as_user: true });
+                                slackApp.client.chat.postMessage({token: envKey, channel:message.user, text:helpString, as_user: true });
+                                //bot.postMessage(message.user, helpString, { as_user: true });
                             }
 
                         }
@@ -204,7 +209,60 @@ bot.on('message', message => {
                 });
             }
     }
-});
+  });
+
+// bot.on('message', message => {
+//     var slackID = message.user;
+//     if (message.type != 'error') {
+//         console.log('-----------------');
+//         console.log(message);
+//         console.log("Timenow: " + (new Date()).toISOString());
+//         console.log("Timenow: " + (new Date()));
+//         console.log('-----------------');
+//     }
+//     const helpString = "Hi! I am Leetcode Bot! I will keep you updated about your progress in Leetcode!"
+//     switch (message.type) {
+//         case "message":
+//             if (message.channel[0] === "D" && message.bot_id === undefined) {
+//                 User.findOne({ slackID: slackID }).exec(function (err, user) {
+//                     if (err) {
+//                         console.log(err);
+//                     } else {
+//                         //console.log(user);
+//                         if (!user) {
+//                             authenticate(slackID);
+//                         } else {
+//                             if (message.text.includes("dailyProgressReport")) {
+//                                 dailyProgressCheck(dailyProgressCheckReport_users, slackID);
+//                             } else if (message.text.includes("dailyProgress")) {
+//                                 dailyProgressCheck(dailyProgressCheck_users, slackID);
+//                             } else if (message.text.includes("newplan")) {
+//                                 newPlan(slackID);
+//                             } else if (message.text.includes("weeklyPlanner")) {
+//                                 weeklyPlanner(slackID);
+//                             }else if (message.text.includes("dailyreminder_all")) {
+//                                 daily_reminder();
+//                             } else if (message.text.includes("dailyreminder")) {
+//                                 daily_reminder(slackID);
+//                             }else if(message.text.includes("dailyLeaderBoard_all")){
+//                                 dailyLeaderBoardCheck();
+//                             }else if(message.text.includes("dailyLeaderBoard")){
+//                                 dailyLeaderBoardCheck(slackID);
+//                             }else if(message.text.includes("query ")){
+//                                 queryUser(slackID, message.text);
+//                             }else if(message.text.includes("compareLastWeek")) {
+//                                 compare_last_week(slackID);
+//                             }
+//                             else {
+//                                 bot.postMessage(message.user, helpString, { as_user: true });
+//                             }
+
+//                         }
+//                     }
+//                 });
+//             }
+//     }
+// });
 
 function queryUser(slackID, text){
     var user = text.split(' ')[1];
@@ -215,7 +273,8 @@ function queryUser(slackID, text){
         } else {
             //console.log(user);
             if (!dailySubmissions||dailySubmissions.length==0) {
-                bot.postMessage(slackID, "Sorry! Didn't find the user!", { as_user: true });
+                //bot.postMessage(slackID, "Sorry! Didn't find the user!", { as_user: true });
+                slackApp.client.chat.postMessage({token: envKey, channel:slackID, text:"Sorry! Didn't find the user!", as_user: true });
             } else {
                 console.log("dailySubmissions ", dailySubmissions);
                 var message = user+"\n"
@@ -224,7 +283,8 @@ function queryUser(slackID, text){
                 {
                     message+='\tsubmitted '+dailySubmissions[i].total_submitted_num+", and solved "+dailySubmissions[i].total_accepted_num+" at "+dailySubmissions[i].date.toISOString().slice(0, 10)+"\n";
                 }
-                bot.postMessage(slackID, message, { as_user: true });
+                //bot.postMessage(slackID, message, { as_user: true });
+                slackApp.client.chat.postMessage({token: envKey, channel:slackID, text:message, as_user: true });
             }
         }
     });
@@ -252,7 +312,8 @@ function authenticate(slackID) {
             }
         ],
     };
-    bot.postMessage(slackID, "", requestData);
+    //bot.postMessage(slackID, "", requestData);
+    slackApp.client.chat.postMessage({...{token: envKey, channel:slackID, text:""}, ...requestData});
 }
 
 function getMonday(d) {
@@ -288,7 +349,9 @@ function newPlan(slackID, message){
             }
         ],
     };
-    bot.postMessage(slackID,"",requestData);
+    //bot.postMessage(slackID,"",requestData);
+    
+    slackApp.client.chat.postMessage({...{token: envKey, channel:slackID, text:""}, ...requestData});
 }
 
 function weeklyPlanner(trigger=null){
@@ -329,7 +392,8 @@ function daily_reminder(trigger=null) {
             } else {
                 console.log("########## no plan this week");
                 if(trigger) {
-                    bot.postMessage(trigger, "You don't have any plan yet.", {as_user:true});
+                    slackApp.client.chat.postMessage({token: envKey, channel:trigger, text:"You don't have any plan yet.", as_user: true });
+                    //bot.postMessage(trigger, "You don't have any plan yet.", {as_user:true});
                     newPlan(trigger);
                 }
             }
@@ -404,7 +468,8 @@ function daily_submissions_check(slackID, cookie, plan_db) {
               console.log(err.errmsg);
           });
           if(total_submitted_num > 0 && total_accepted_num==0) {
-              bot.postMessage(slackID, `You submitted ${total_submitted_num} problems yesterday but no accpeted ones. Keep going!!`, { as_user: true });
+              slackApp.client.chat.postMessage({token: envKey, channel:slackID, text:`You submitted ${total_submitted_num} problems yesterday but no accpeted ones. Keep going!!`, as_user: true });
+              //bot.postMessage(slackID, `You submitted ${total_submitted_num} problems yesterday but no accpeted ones. Keep going!!`, { as_user: true });
           } else if(total_submitted_num > 0 && total_accepted_num > 0) {
             plan = plan_db.plans;
             solved_num = parseInt(plan.get('problems_solved')) + total_accepted_num;
@@ -418,7 +483,8 @@ function daily_submissions_check(slackID, cookie, plan_db) {
             plan_db.plans = plan;
             plan_db.save()
                 .then(() => {
-                    bot.postMessage(slackID, `You submitted ${total_submitted_num} problems yesterday and ${total_accepted_num} got accepted!! Good work and keep going!`, { as_user: true });
+                    slackApp.client.chat.postMessage({token: envKey, channel:slackID, text:`You submitted ${total_submitted_num} problems yesterday but no accpeted ones. Keep going!!`, as_user: true });
+                    //bot.postMessage(slackID, `You submitted ${total_submitted_num} problems yesterday and ${total_accepted_num} got accepted!! Good work and keep going!`, { as_user: true });
                     if(done) {
                         setTimeout(function(){newPlan(slackID, "Good job! Set a new goal for this week!");}, 800);
                     }
@@ -427,7 +493,8 @@ function daily_submissions_check(slackID, cookie, plan_db) {
                     console.log("weekly plan update error occurs: ", err);
                 });
           } else {
-              bot.postMessage(slackID, "You made no progress yesterday!! Take action now!", { as_user: true });
+              slackApp.client.chat.postMessage({token: envKey, channel:slackID, text:"You made no progress yesterday!! Take action now!", as_user: true });
+              //bot.postMessage(slackID, "You made no progress yesterday!! Take action now!", { as_user: true });
           }
         }
     });
@@ -462,21 +529,35 @@ function compare_last_week(slackID) {
                     }
                 }
                 if(done_plan_number > 0 && not_done_plan_number==0) {
-                    bot.postMessage(slackID, `Wow great job you finished all your plans last week. You solved ${solved_num} problems! Plan to solve more problems this week?`, {as_user:true});
+                    slackApp.client.chat.postMessage({token: envKey, channel:slackID, text:`Wow great job you finished all your plans last week. You solved ${solved_num} problems! Plan to solve more problems this week?`, as_user: true });
+                    //bot.postMessage(slackID, `Wow great job you finished all your plans last week. You solved ${solved_num} problems! Plan to solve more problems this week?`, {as_user:true});
                 } else if(done_plan_number > 0 && not_done_plan_number > 0) {
-                    bot.postMessage(slackID, `You solved ${solved_num} problems! But you didn't finish ${unsolved_num} problems. Make plans to continue to finish ${unsolved_num} problems this week?`, {as_user:true});
+                    slackApp.client.chat.postMessage({token: envKey, channel:slackID, text:`You solved ${solved_num} problems! But you didn't finish ${unsolved_num} problems. Make plans to continue to finish ${unsolved_num} problems this week?`, as_user: true });
+                    //bot.postMessage(slackID, `You solved ${solved_num} problems! But you didn't finish ${unsolved_num} problems. Make plans to continue to finish ${unsolved_num} problems this week?`, {as_user:true});
                 } else {
-                    bot.postMessage(slackID, `You didn't solve any problems last week! Make plans to solve some problems this week?`, {as_user:true});
+                    slackApp.client.chat.postMessage({token: envKey, channel:slackID, text:`You didn't solve any problems last week! Make plans to solve some problems this week?`, as_user: true });
+                    //bot.postMessage(slackID, `You didn't solve any problems last week! Make plans to solve some problems this week?`, {as_user:true});
                 }
             } else {
                 console.log("########## no plans made last week");
-                bot.postMessage(slackID, "You didn't make any plans last week. Make some this week?", {as_user:true});
+                slackApp.client.chat.postMessage({token: envKey, channel:slackID, text:"You didn't make any plans last week. Make some this week?", as_user: true });
+                //bot.postMessage(slackID, "You didn't make any plans last week. Make some this week?", {as_user:true});
             }
         }
     });
 }
 
+(async () => {
+    // Start the app
+    await slackApp.start(process.env.PORT || 3001);
+    console.log('⚡️ Bolt app is running!');
+    slackApp.client.chat.postMessage({token: envKey, channel:"UJAJABTFZ", text:"Alive", as_user: true });
+    startWeeklyPlanner();
+    startDailyProgressCheckReport();
+    startDailyLeaderBoardCheck();
+  })();
+
 module.exports = {
-    bot: bot,
+    slackApp: slackApp,
     getMonday: getMonday
 }

@@ -3,7 +3,8 @@ var router = express.Router();
 //mongoose.connect(process.env.MONGODB_URI,{ useNewUrlParser: true }); 
 var { startDialog, getSolvedProblemsForUser } = require('./common');
 var {User, WeeklyMultiPlan} = require('../models/models');
-var {bot, getMonday} = require('../bot');
+var {slackApp, getMonday} = require('../bot');
+const envKey = process.env.NUDGE_BOT_TOKEN;
 
 router.post('/', function (req, res) {
     var data = JSON.parse(req.body.payload);
@@ -35,10 +36,12 @@ router.post('/', function (req, res) {
             });
             newWeeklyMultiPlan.save()
                 .then(() => {
-                    bot.postMessage(slackID, `Great! You've set a goal to solve ${submission.problems_goal} leetcode problems. I will keep you on track :smile:`, {as_user:true});
+                    slackApp.client.chat.postMessage({token: envKey, channel:slackID, text:`Great! You've set a goal to solve ${submission.problems_goal} leetcode problems. I will keep you on track :smile:`, as_user: true });
+                    //bot.postMessage(slackID, `Great! You've set a goal to solve ${submission.problems_goal} leetcode problems. I will keep you on track :smile:`, {as_user:true});
                 })
                 .catch((err) => {
-                    bot.postMessage(slackID, "Ooops!!! Error occurs! Please try again saying weeklyplan", {as_user:true});
+                    slackApp.client.chat.postMessage({token: envKey, channel:slackID, text:"Ooops!!! Error occurs! Please try again saying weeklyplan", as_user: true });
+                    //bot.postMessage(slackID, "Ooops!!! Error occurs! Please try again saying weeklyplan", {as_user:true});
                 })
             res.send();
             }
@@ -74,7 +77,8 @@ router.post('/', function (req, res) {
                 console.log(err);
             } else {
                 if(user) {
-                    bot.postMessage(slackID, "you haven't finished your goal yet! Can't set new!", {as_user: true});
+                    slackApp.client.chat.postMessage({token: envKey, channel:slackID, text:"you haven't finished your goal yet! Can't set new!", as_user: true });
+                    //bot.postMessage(slackID, "you haven't finished your goal yet! Can't set new!", {as_user: true});
                     res.send();
                 } else {
                     //var hourOptions = [];
@@ -139,13 +143,15 @@ function updateUserProfile(slackID, cookie, res, error, num_total){
                 }
                 newUser.save()
                 .then( () => {
-                    bot.postMessage(slackID, "Congratulations! You successfully connect with Leetcode ", {as_user:true});
+                    slackApp.client.chat.postMessage({token: envKey, channel:slackID, text:"Congratulations! You successfully connect with Leetcode ", as_user: true });
+                    //bot.postMessage(slackID, "Congratulations! You successfully connect with Leetcode ", {as_user:true});
                     })
                 .catch((err) => {
                     console.log('error in new User api');
                     console.log(err);
                     console.log(err.errmsg);
-                    bot.postMessage(slackID, "Ooops!!! Error occurs! Please try again by saying connect", {as_user:true});
+                    slackApp.client.chat.postMessage({token: envKey, channel:slackID, text:"Ooops!!! Error occurs! Please try again by saying connect", as_user: true });
+                    //bot.postMessage(slackID, "Ooops!!! Error occurs! Please try again by saying connect", {as_user:true});
                 });
                 res.send();
             }

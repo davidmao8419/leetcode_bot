@@ -3,6 +3,7 @@ var mongoose = require('mongoose');
 const request = require('request');
 var moment = require('moment');
 var CronJob = require('cron').CronJob;
+var { startDialog, getSolvedProblemsForUser } = require('./routes/common');
 mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true }); // only when test bot.js
 var { User, WeeklyMultiPlan, LeaderBoard, DailySubmission } = require('./models/models');
 var _ = require('underscore')
@@ -547,9 +548,172 @@ function compare_last_week(slackID) {
     });
 }
 
+slackApp.action({"callback_id":"newplan"}, ({ body, ack, say }) => {
+    console.log('here');
+    console.log(body);
+    var slackID = body.user.id;
+    var week = getMonday(new Date()).toDateString();
+    // TODO: change weekly plans options
+    WeeklyMultiPlan.findOne({ slackID: slackID, week: week, done: false }).exec(function (err, user) {
+        if (err) {
+            console.log(err);
+        } else {
+            if (user) {
+                ack();
+                slackApp.client.chat.postMessage({ token: envKey, channel: slackID, text: "you haven't finished your goal yet! Can't set new!", as_user: true });
+                //bot.postMessage(slackID, "you haven't finished your goal yet! Can't set new!", {as_user: true});
+            } else {
+                //var hourOptions = [];
+                var focuses = [
+                    { "label": "Software Development", "value": "Software Development" },
+                    { "label": "Writing more", "value": "Writing more" },
+                    { "label": "Learning new things", "value": "Learning new things" }];
+                //for (var i = 30; i >= 0; i-=2) {
+                //    hourOptions.push({"label":i.toString(), "value":i.toString()});
+                //}
+
+                var requestData = {
+                    "trigger_id": body.trigger_id,
+                    "notify_on_cancel": true,
+                    "dialog": {
+                        "callback_id": "newplan_callback",
+                        "title": "New Goal for this week!",
+                        "submit_label": "Request",
+                        "notify_on_cancel": true,
+                        "state": "Limo",
+                        "elements": [
+                            {
+                                "label": "How many problems do you want to solve",
+                                "name": "problems_goal",
+                                "type": "text",
+                                "subtype": "number",
+                                "placeholder": "Numbers only"
+                            }
+                        ],
+                    },
+                };
+                startDialog(requestData);
+            }
+        }
+    });
+  });
+
+  slackApp.action({"callback_id":"leetcodeConnection"}, ({ body, ack, say }) => {
+    console.log('here');
+    console.log(body);
+    var requestData = {
+        "trigger_id": body.trigger_id,
+        "dialog": {
+            "callback_id": "leetcode_connection_callback",
+            "title": "Upload a config file",
+            "submit_label": "Request",
+            "notify_on_cancel": true,
+            "state": "Limo",
+            "elements": [
+                {
+                    "label": "Please input your cookie for Leetcode website",
+                    "name": "cookie",
+                    "type": "textarea",
+                    "placeholder": "Cookie for Leetcode website"
+                },
+            ],
+        },
+    };
+    startDialog(requestData);
+  });
+
+slackApp.action({ "callback_id": "newplan_callback" }, ({ body, ack, say }) => {
+    console.log('here');
+    console.log(body);
+    var slackID = body.user.id;
+    var submission = body.submission;
+    if (isNaN(submission["problems_goal"]) || isNaN(parseFloat(submission["problems_goal"]))) {
+        console.log("!!!! input hours not numeric: ", submission);
+        res.type('application/json');
+        var errorMsg = {
+            "errors": [
+                { "name": "problems_goal", "error": "This should only be numeric" }
+            ]
+        }
+        ack(errorMsg);
+        //res.status(200).send(errorMsg);
+    } else {
+        submission["problems_solved"] = 0; //record how many problems already solved for the week
+        //console.log("submission: ", submission);
+        var week = getMonday(new Date()).toDateString();
+        var newWeeklyMultiPlan = new WeeklyMultiPlan({
+            slackID: slackID,
+            week: week,
+            plans: submission,
+            done: false
+        });
+        newWeeklyMultiPlan.save()
+            .then(() => {
+                slackApp.client.chat.postMessage({ token: envKey, channel: slackID, text: `Great! You've set a goal to solve ${submission.problems_goal} leetcode problems. I will keep you on track :smile:`, as_user: true });
+                //bot.postMessage(slackID, `Great! You've set a goal to solve ${submission.problems_goal} leetcode problems. I will keep you on track :smile:`, {as_user:true});
+            })
+            .catch((err) => {
+                slackApp.client.chat.postMessage({ token: envKey, channel: slackID, text: "Ooops!!! Error occurs! Please try again saying weeklyplan", as_user: true });
+                //bot.postMessage(slackID, "Ooops!!! Error occurs! Please try again saying weeklyplan", {as_user:true});
+            })
+        //res.send();
+        ack();
+    }
+});
+
+slackApp.action({ "callback_id": "leetcode_connection_callback" }, ({ body, ack, say }) => {
+    console.log('here');
+    console.log(body);
+    var slackID = body.user.id;
+    getSolvedProblemsForUser(slackID, body.submission.cookie, ack, updateUserProfile);
+});
+
+function updateUserProfile(slackID, cookie, ack, error, num_total){
+    if(error){
+        console.log(error);
+        ack({"errors":[{"name": "cookie", "error": "Cookie Error:  "+error}]});
+    }else{
+        User.findOne({slackID: slackID}).exec(function(err, user){
+            if(err){
+                console.log(err);
+                ack({"errors":[{"name": "cookie", "error": "DB Error:  "+error}]});
+            } else {
+                console.log(user);
+                if(user){
+                    console.log("User slackID"+ slackID+" exist");
+                    var newUser = user;
+                    newUser.cookie = cookie;
+                    newUser.problems_solved_yesterday += Math.max(0, num_total - newUser.num_total);
+                    newUser.num_total = num_total;
+                }else{
+                    var newUser = new User({
+                        slackID: slackID,
+                        cookie: cookie,
+                        num_total: num_total,
+                        problems_solved_yesterday: 0
+                    });
+                }
+                newUser.save()
+                .then( () => {
+                    slackApp.client.chat.postMessage({token: envKey, channel:slackID, text:"Congratulations! You successfully connect with Leetcode ", as_user: true });
+                    //bot.postMessage(slackID, "Congratulations! You successfully connect with Leetcode ", {as_user:true});
+                    })
+                .catch((err) => {
+                    console.log('error in new User api');
+                    console.log(err);
+                    console.log(err.errmsg);
+                    slackApp.client.chat.postMessage({token: envKey, channel:slackID, text:"Ooops!!! Error occurs! Please try again by saying connect", as_user: true });
+                    //bot.postMessage(slackID, "Ooops!!! Error occurs! Please try again by saying connect", {as_user:true});
+                });
+                ack();
+            }
+        });
+    }
+}
+
 (async () => {
     // Start the app
-    await slackApp.start(process.env.PORT || 3001);
+    await slackApp.start(process.env.PORT || 3000);
     console.log('⚡️ Bolt app is running!');
     slackApp.client.chat.postMessage({token: envKey, channel:"UJAJABTFZ", text:"Alive", as_user: true });
     startWeeklyPlanner();

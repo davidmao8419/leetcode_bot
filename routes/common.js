@@ -36,7 +36,7 @@ function getSolvedProblemsForUser(slackID, cookie, res, callback) {
             callback(slackID, cookie, res, error, null);
         } else {
             var data = JSON.parse(body);
-            var num_total = data['num_solved'];
+            var num_total = data['num_total'];
             console.log('+++++++++');
             console.log(num_total);
             console.log(data);
